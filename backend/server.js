@@ -28,13 +28,13 @@ const transporter = nodemailer.createTransport({
 });
 
 // Verify transporter connection (optional, but useful during dev)
-transporter.verify((error, success) => {
-  if (error) {
-    console.error('Error verifying email transporter:', error);
-  } else {
-    console.log('✅ Email transporter ready');
-  }
-});
+// transporter.verify((error, success) => {
+//   if (error) {
+//     console.error('Error verifying email transporter:', error);
+//   } else {
+//     console.log('✅ Email transporter ready');
+//   }
+// });
 
 // Endpoint: Send email with uploaded photo
 app.post('/send-email', upload.single('photo'), async (req, res) => {
