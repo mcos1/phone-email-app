@@ -3,43 +3,17 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const multer = require('multer');
-const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 
 const app = express();
 const upload = multer({ storage: multer.memoryStorage() });
 
 // Middleware
-app.use(cors({
-  origin: ['https://phone-email-app.vercel.app'], // ✅ your frontend domain
-  methods: ['GET', 'POST'],
-  allowedHeaders: ['Content-Type'],
-}));
-
+app.use(cors());
 app.use(express.json());
 
-// Validate environment variables
-if (!process.env.EMAIL_USER || !process.env.EMAIL_PASSWORD) {
-  console.error('❌ Missing EMAIL_USER or EMAIL_PASSWORD in .env file');
-  process.exit(1);
-}
-
-// Configure Nodemailer transporter (using Gmail SMTP)
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASSWORD, // Use Gmail App Password
-  },
-});
-
-// Verify transporter connection (optional, but useful during dev)
-// transporter.verify((error, success) => {
-//   if (error) {
-//     console.error('Error verifying email transporter:', error);
-//   } else {
-//     console.log('✅ Email transporter ready');
-//   }
-// });
+// Initialize Resend client
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 // Endpoint: Send email with uploaded photo
 app.post('/send-email', upload.single('photo'), async (req, res) => {
@@ -51,31 +25,30 @@ app.post('/send-email', upload.single('photo'), async (req, res) => {
       return res.status(400).json({ error: 'Email and photo are required' });
     }
 
-    const mailOptions = {
-      from: process.env.EMAIL_USER,
+    console.log(`📨 Sending email via Resend to ${email}`);
+
+    const result = await resend.emails.send({
+      from: 'Photo App <onboarding@resend.dev>', // Must be a verified sender in Resend
       to: email,
       subject: 'Your Photo from Phone to Email App',
-      text: 'Here is the photo you uploaded. You can now forward this email to anyone!',
       html: '<p>Here is the photo you uploaded. You can now forward this email to anyone!</p>',
       attachments: [
         {
           filename: photo.originalname,
-          content: photo.buffer,
+          content: photo.buffer.toString('base64'),
         },
       ],
-    };
+    });
 
-    await transporter.sendMail(mailOptions);
-    console.log(`📤 Email sent successfully to ${email}`);
-
+    console.log('✅ Email sent successfully via Resend:', result);
     res.json({ success: true, message: 'Email sent successfully!' });
   } catch (error) {
-    console.error('❌ Error sending email:', error);
+    console.error('❌ Error sending email via Resend:', error);
     res.status(500).json({ error: 'Failed to send email' });
   }
 });
 
-// Health check endpoint
+// Health check
 app.get('/', (req, res) => {
   res.json({ status: 'Server is running' });
 });
